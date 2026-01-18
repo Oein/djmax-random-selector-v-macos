@@ -15,7 +15,7 @@ namespace DjmaxRandomSelectorV
         private readonly IFileManager _fileManager;
 
         private string[] _basicCategories;
-        private PliCategory[] _pliCategories;
+        //private PliCategory[] _pliCategories;
         private LinkDiscItem[] _linkDisc;
 
         public IReadOnlyList<Track> AllTrack { get; private set; }
@@ -30,7 +30,7 @@ namespace DjmaxRandomSelectorV
         public void Initialize(Dmrsv3AppData appdata)
         {
             _basicCategories = appdata.BasicCategories;
-            _pliCategories = appdata.PliCategories;
+            //_pliCategories = appdata.PliCategories;
             _linkDisc = appdata.LinkDisc;
         }
 
@@ -38,7 +38,7 @@ namespace DjmaxRandomSelectorV
         {
             var db = _fileManager.Import<List<VArchiveDBTrack>>(AllTrackFilePath);
             
-            var pliDict = _pliCategories.ToDictionary(pli => pli.Major, pli => pli.Minors);
+            /*var pliDict = _pliCategories.ToDictionary(pli => pli.Major, pli => pli.Minors);
             string GetCategory(int id, string cat)
             {
                 if (!pliDict.ContainsKey(cat))
@@ -53,7 +53,7 @@ namespace DjmaxRandomSelectorV
                     }
                 }
                 return cat;
-            }
+            }*/
 
             AllTrack = db.ConvertAll(x =>
             {
@@ -62,7 +62,7 @@ namespace DjmaxRandomSelectorV
                     Id = x.Title,
                     Title = x.Name,
                     Composer = x.Composer,
-                    Category = GetCategory(x.Title, x.DlcCode)
+                    Category = x.DlcCode
                 };
                 return new Track()
                 {

@@ -242,29 +242,16 @@
             "type": 2
         },
         {
-            "name": "PLI : 2025",
+            "name": "TRIBUTE #1",
             "id": "PLI1",
             "steamId": null,
             "type": 3
-        }
-    ],
-    "pliCategories": [
-        {
-            "major": "PLI1",
-            "minors": [
+        },
                 {
-                    "name": "TRIBUTE #1",
-                    "items": [
-                        [ 675, 684 ]
-                    ]
-                },
-                {
-                    "name": "64514 Part.1",
-                    "items": [
-                        [ 723, 732 ]
-                    ]
-                }
-            ]
+            "name": "64514 Part.1",
+            "id": "PLI2",
+            "steamId": null,
+            "type": 3
         }
     ],
     "linkDisc": [
