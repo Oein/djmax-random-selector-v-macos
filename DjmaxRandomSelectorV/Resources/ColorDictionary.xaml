@@ -435,6 +435,12 @@
         </DrawingBrush.Drawing>
     </DrawingBrush>
     <SolidColorBrush x:Key="Bg645141" Color="#385dcd" />
+    <LinearGradientBrush x:Key="BgTribute2" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Color="#ef6db6" Offset="0.1"/>
+        <GradientStop Color="#c5a5cf" Offset="0.4"/>
+        <GradientStop Color="#b5b1d9" Offset="0.6"/>
+        <GradientStop Color="#75cfef" Offset="0.9"/>
+    </LinearGradientBrush>
     <!--#endregion-->
 
 </ResourceDictionary>
