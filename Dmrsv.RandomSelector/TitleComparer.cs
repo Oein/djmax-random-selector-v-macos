@@ -58,18 +58,26 @@
             }
             if (char.IsUpper(ch)) // alphabet
             {
-                return 4;
+                return 5;
             }
-            if (char.IsLetter(ch)) // non-alphabetic letter
+            if (char.IsLetter(ch) && !char.IsUpper(ch) && !char.IsLower(ch)) // non-alphabetic letter
             {
-                return idx == 0 ? 1 : 5;
+               if (idx == 0)
+                {
+                    bool isKorean = (ch >= 0xAC00 && ch <= 0xD7A3) || (ch >= 0x3131 && ch <= 0x318E);
+                    return isKorean ? 2 : 1; 
+                }
+                else
+                {
+                 return 6;
+                }
             }
             if (char.IsDigit(ch))
             {
-                return 3;
+                return 4;
             }
             // symbol, punctuation, etc.
-            return 2;
+            return 3;
         }
     }
 }
