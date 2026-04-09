@@ -711,6 +711,9 @@
                                 <DataTrigger Binding="{Binding Name}" Value="TEKKEN">
                                     <Setter TargetName="Button" Property="Background" Value="{StaticResource BgTekken}"/>
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding Name}" Value="O.N.G.E.K.I">
+                                    <Setter TargetName="Button" Property="Background" Value="{StaticResource BgO.N.G.E.K.I}"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding Name}" Value="TRIBUTE #1">
                                     <Setter TargetName="Button" Property="Background" Value="{StaticResource BgTribute1}"/>
                                 </DataTrigger>

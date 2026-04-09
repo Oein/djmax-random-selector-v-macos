@@ -441,6 +441,10 @@
         <GradientStop Color="#b5b1d9" Offset="0.6"/>
         <GradientStop Color="#75cfef" Offset="0.9"/>
     </LinearGradientBrush>
+    <LinearGradientBrush x:Key="BgO.N.G.E.K.I" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Color="#AEFFA6" />
+        <GradientStop Color="#FFC7Ef" Offset="1" />
+    </LinearGradientBrush>
     <!--#endregion-->
 
 </ResourceDictionary>

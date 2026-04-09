@@ -1,4 +1,6 @@
-﻿namespace Dmrsv.RandomSelector
+﻿using System.Globalization;
+
+namespace Dmrsv.RandomSelector
 {
     public class TitleComparer : IComparer<string>
     {
@@ -26,10 +28,16 @@
             }
             // priority order: white-space -> non-alphabetic letter -> special character -> number -> alphabet(Normalize diacritics)
             char a = x[index], b = y[index];
-            int priorityA = GetPriority(a, index);
-            int priorityB = GetPriority(b, index);
+            int priorityA = GetPriority(a);
+            int priorityB = GetPriority(b);
             if (priorityA == priorityB)
             {
+                if (priorityA == 1)
+                {
+                    var compareInfo = new CultureInfo("ko-KR").CompareInfo;
+                    return compareInfo.Compare(a.ToString(), b.ToString());
+                }
+
                 return a.CompareTo(b);
             }
             return priorityA - priorityB;
@@ -46,10 +54,14 @@
                  .Replace("Ü", "U")
                  .Replace("È", "E")
                  .Replace("É", "E");
-            
+
+            // Djmax sorts Chinese characters based on standard Korean Hanja
+            s = s.Replace("脳", "腦") // 脳天直撃
+                 .Replace("撃", "擊");
+
             return s;
         }
-
+/*
         private int GetPriority(char ch, int idx)
         {
             if (char.IsWhiteSpace(ch))
@@ -76,6 +88,27 @@
             {
                 return 4;
             }
+            // symbol, punctuation, etc.
+            return 3;
+        }*/
+        private int GetPriority(char ch)
+        {
+            if (char.IsWhiteSpace(ch)) return 0;
+
+            if (char.IsLetter(ch)) // alphabet
+            {
+                bool isKorean = (ch >= 0xAC00 && ch <= 0xD7A3) || (ch >= 0x3131 && ch <= 0x318E);
+                if (isKorean) return 2; // ko
+
+                bool isEnglish = (ch >= 'A' && ch <= 'Z');
+                if (isEnglish) return 5; // en
+
+                // non-alphabetic letter
+                return 1;
+            }
+
+            if (char.IsDigit(ch)) return 4;
+
             // symbol, punctuation, etc.
             return 3;
         }
