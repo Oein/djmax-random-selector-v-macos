@@ -73,7 +73,8 @@ namespace DjmaxRandomSelectorV
                                     Info = info,
                                     Button = bt.Key.AsButtonTunes(),
                                     Difficulty = df.Key.AsDifficulty(),
-                                    Level = df.Value.Level
+                                    Level = df.Value.Level,
+                                    Floor = df.Value.Floor
                                 })
                                 .OrderBy(p => p.PatternId)
                                 .ToArray()
