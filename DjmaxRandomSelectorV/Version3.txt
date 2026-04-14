@@ -1,4 +1,4 @@
-﻿3.5.0
+﻿3.6.0
 260326
 titleTest
 descriptionTest
