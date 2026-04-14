@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -15,7 +16,10 @@ namespace DjmaxRandomSelectorV.ViewModels
 {
     public class VArchiveWizardViewModel : Screen
     {
+        private const string FloorDbUrl = "https://v-archive.net/db/floors.json";
+
         private readonly IEventAggregator _eventAggregator;
+        private readonly TrackDB _trackDB;
 
         private string _currentButton;
         private string _currentBoard;
@@ -43,55 +47,159 @@ namespace DjmaxRandomSelectorV.ViewModels
 
         public BindableCollection<VArchivePatternItem> PatternItems { get; }
 
-        public VArchiveWizardViewModel(IEventAggregator eventAggregator)
+        public VArchiveWizardViewModel(IEventAggregator eventAggregator, TrackDB trackDB)
         {
             _eventAggregator = eventAggregator;
+            _trackDB = trackDB;
             PatternItems = new BindableCollection<VArchivePatternItem>();
         }
 
         public void RequestBoard()
         {
-            if (string.IsNullOrEmpty(SelectedButton) || string.IsNullOrEmpty(SelectedBoard))
+            if (string.IsNullOrWhiteSpace(Nickname))
             {
-                MessageBox.Show("Button or Board is empty.", "Invalid Request", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Nickname is empty.", "Invalid Request", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            string url = $"https://v-archive.net/api/archive/{Nickname}/board/{SelectedButton}/{SelectedBoard}";
-            HttpResponseMessage response = client.GetAsync(url).Result;
-            BoardRoot root = response.Content.ReadFromJsonAsync<BoardRoot>().Result;
-            if (root.Success != true)
+            if (string.IsNullOrWhiteSpace(SelectedButton))
             {
-                MessageBox.Show(root.Message, "Request Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Button is empty.", "Invalid Request", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            PatternItems.Clear();
-            CurrentButton = root.Button + "B";
-            CurrentBoard = root.Board switch
+            if (!int.TryParse(SelectedButton, out int selectedButtonNum)
+                || !new[] { 4, 5, 6, 8 }.Contains(selectedButtonNum))
             {
-                "MX" => "Lv. 12~15",
-                "SC" => "SC",
-                "SC5" => "SC~5",
-                "SC10" => "SC~10",
-                "SC15" => "SC~15",
-                _ => "Lv. " + root.Board,
+                MessageBox.Show("Invalid button value.", "Invalid Request", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (_trackDB?.AllTrack is null)
+            {
+                MessageBox.Show("Track database is not ready.", "Request Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var floorNameByFloor = LoadFloorNameByFloor(client);
+
+                string url = $"https://v-archive.net/api/v2/archive/{Nickname}/button/{SelectedButton}";
+                HttpResponseMessage response = client.GetAsync(url).Result;
+
+                ArchiveV2Response root = response.Content.ReadFromJsonAsync<ArchiveV2Response>().Result;
+                if (root is null)
+                {
+                    MessageBox.Show("Invalid response from server.", "Request Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                if (root.Success != true)
+                {
+                    MessageBox.Show(root.Message ?? $"Request failed ({(int)response.StatusCode}).", "Request Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                PatternItems.Clear();
+                CurrentButton = selectedButtonNum + "B";
+                CurrentBoard = string.IsNullOrWhiteSpace(SelectedBoard) ? "All" : SelectedBoard;
+
+                var records = root.Records ?? new List<ArchiveV2Record>();
+                var recordDict = records
+                    .GroupBy(r => (r.Title, r.Pattern))
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var selectedButtonTunes = (ButtonTunes)selectedButtonNum;
+                var allPatterns = from track in _trackDB.AllTrack
+                                  from pattern in track.Patterns
+                                  where pattern.Button == selectedButtonTunes
+                                  let patternStr = pattern.Difficulty.AsString()
+                                  let recordKey = (track.Info.Id, patternStr)
+                                  let record = recordDict.ContainsKey(recordKey) ? recordDict[recordKey] : null
+                                  let fallbackLevel = record?.Level ?? pattern.Level
+                                  let dbFloor = pattern.Floor > 0 ? (double?)pattern.Floor : null
+                                  let effectiveFloor = record?.Floor ?? dbFloor
+                                  let hasFloor = effectiveFloor.HasValue
+                                  let floorKey = hasFloor ? (int?)effectiveFloor.Value : null
+                                  let boardValue = SelectedBoard ?? string.Empty
+                                  where IsPatternMatchedByBoard(boardValue, patternStr, fallbackLevel, floorKey)
+                                  select new VArchivePatternItem()
+                                  {
+                                      Id = track.Info.Id,
+                                      Style = patternStr,
+                                      Title = track.Info.Title,
+                                      Floor = hasFloor ? effectiveFloor.Value : fallbackLevel,
+                                      FloorText = !string.IsNullOrWhiteSpace(record?.FloorName)
+                                          ? record.FloorName
+                                          : hasFloor
+                                              ? (floorKey.HasValue && floorNameByFloor.ContainsKey(floorKey.Value)
+                                                  ? floorNameByFloor[floorKey.Value]
+                                                  : effectiveFloor.Value.ToString())
+                                              : $"{fallbackLevel}L",
+                                      HasFloor = hasFloor,
+                                      Score = record?.Score,
+                                      IsMaxCombo = record?.MaxCombo,
+                                      HasRecord = record != null
+                                  };
+
+                PatternItems.AddRange(allPatterns
+                    .OrderBy(p => p.HasFloor ? 1 : 0)
+                    .ThenBy(p => p.Floor)
+                    .ThenBy(p => p.Title)
+                    .ThenBy(p => p.Style));
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show($"Request failed: {ex.Message}", "Request Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static Dictionary<int, string> LoadFloorNameByFloor(HttpClient client)
+        {
+            try
+            {
+                var floors = client.GetFromJsonAsync<List<FloorInfo>>(FloorDbUrl).Result;
+                if (floors is null)
+                {
+                    return new Dictionary<int, string>();
+                }
+
+                return floors
+                    .Where(f => !string.IsNullOrWhiteSpace(f.FloorName))
+                    .GroupBy(f => f.Floor)
+                    .ToDictionary(g => g.Key, g => g.First().FloorName);
+            }
+            catch
+            {
+                return new Dictionary<int, string>();
+            }
+        }
+
+        private static bool IsPatternMatchedByBoard(string board, string patternStyle, int level, int? floor)
+        {
+            return board switch
+            {
+                "1L" => patternStyle != "SC" && level == 1,
+                "2L" => patternStyle != "SC" && level == 2,
+                "3L" => patternStyle != "SC" && level == 3,
+                "4L" => patternStyle != "SC" && level == 4,
+                "5L" => patternStyle != "SC" && level == 5,
+                "6L" => patternStyle != "SC" && level == 6,
+                "7L" => patternStyle != "SC" && level == 7,
+                "8L" => patternStyle != "SC" && level == 8,
+                "9L" => patternStyle != "SC" && level == 9,
+                "10L" => patternStyle != "SC" && level == 10,
+                "11L" => patternStyle != "SC" && level == 11,
+                "12L~15L" => patternStyle != "SC" && level >= 12,
+                "SC" => patternStyle == "SC",
+                "SC~5" => floor.HasValue && floor.Value <= 53,
+                "SC~10" => floor.HasValue && floor.Value >= 61 && floor.Value <= 103,
+                "SC~15" => floor.HasValue && floor.Value >= 111,
+                _ => true,
             };
-            var items = from floor in root.Floors
-                        let floorNumber = floor.FloorNumber
-                        from p in floor.Patterns
-                        select new VArchivePatternItem()
-                        {
-                            Id = p.Title,
-                            Style = p.Pattern,
-                            Title = p.Name,
-                            Floor = floorNumber,
-                            Score = p.Score is null ? null : double.Parse(p.Score),
-                            IsMaxCombo = p.MaxCombo is null ? null : p.MaxCombo != 0,
-                        };
-            PatternItems.AddRange(items);
         }
 
         #region Query
@@ -129,7 +237,27 @@ namespace DjmaxRandomSelectorV.ViewModels
             }
             if (IncludesFloor)
             {
-                items = items.Where(i => FloorAbove <= i.Floor && i.Floor <= FloorBelow);
+                items = items.Where(i => i.HasFloor)
+                             .Where(i =>
+                             {
+                                 if (string.IsNullOrWhiteSpace(i.FloorText))
+                                 {
+                                     return false;
+                                 }
+
+                                 var text = i.FloorText.Trim();
+                                 if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double floorDisplay))
+                                 {
+                                     return false;
+                                 }
+
+                                 if (!text.Contains(".") && floorDisplay >= 100)
+                                 {
+                                     floorDisplay /= 10.0;
+                                 }
+
+                                 return FloorAbove <= floorDisplay && floorDisplay <= FloorBelow;
+                             });
             }
 
             bool checks = command != "deselect";
@@ -165,28 +293,39 @@ namespace DjmaxRandomSelectorV.ViewModels
             return Task.CompletedTask;
         }
 
-        public record BoardRoot
+        public record ArchiveV2Response
         {
             public bool? Success { get; init; }
-            public string Board { get; init; }
-            public string Button { get; init; }
-            public List<BoardFloor> Floors { get; init; }
+            public int Button { get; init; }
+            public string Nickname { get; init; }
+            public int Count { get; init; }
+            public List<ArchiveV2Record> Records { get; init; }
             public string Message { get; init; }
         }
 
-        public record BoardFloor
-        {
-            public double FloorNumber { get; init; }
-            public List<BoardPattern> Patterns { get; init; }
-        }
-
-        public record BoardPattern
+        public record ArchiveV2Record
         {
             public int Title { get; init; }
             public string Name { get; init; }
+            public string DlcCode { get; init; }
             public string Pattern { get; init; }
-            public string Score { get; init; }
-            public int? MaxCombo { get; init; }
+            public int Level { get; init; }
+            public double? Floor { get; init; }
+            public string FloorName { get; init; }
+            public bool NewTab { get; init; }
+            public double MaxRating { get; init; }
+            public double Score { get; init; }
+            public bool MaxCombo { get; init; }
+            public double? Rating { get; init; }
+            public double Djpower { get; init; }
+            public double? MaxDjpower { get; init; }
+            public string UpdatedAt { get; init; }
+        }
+
+        public record FloorInfo
+        {
+            public int Floor { get; init; }
+            public string FloorName { get; init; }
         }
     }
 }

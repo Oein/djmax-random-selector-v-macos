@@ -18,7 +18,10 @@ namespace DjmaxRandomSelectorV.Models
         public string Style { get; init; }
         public string Title { get; init; }
         public double Floor { get; init; }
+        public string FloorText { get; init; }
+        public bool HasFloor { get; init; } = false;
         public double? Score { get; init; }
         public bool? IsMaxCombo { get; init; }
+        public bool HasRecord { get; init; } = false;
     }
 }

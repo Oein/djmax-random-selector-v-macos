@@ -190,7 +190,7 @@
         <Button x:Name="RunVArchiveWizard"
                 Content="Run V-ARCHIVE Wizard"
                 Background="{StaticResource DarkerTranslucentBackgroundColor}"
-                Grid.Row="6"
+            Grid.Row="5"
                 Style="{StaticResource HoverEffectTransparentButton}"
                 FontSize="12"
                 FontFamily="{StaticResource LatoBlackFont}"
@@ -209,8 +209,8 @@
         </StackPanel>
         <!--#endregion-->
         <!--#region Right Playlist-->
-        <Grid Grid.Row="2" Grid.Column="3"
-              Grid.RowSpan="6">
+          <Grid Grid.Row="2" Grid.Column="2"
+              Grid.RowSpan="4">
             <Grid.RowDefinitions>
                 <RowDefinition/>
                 <RowDefinition Height="Auto"/>
