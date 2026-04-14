@@ -18,10 +18,10 @@ namespace DjmaxRandomSelectorV.ViewModels
         private readonly IEventAggregator _eventAggregator;
 
         private string _currentButton;
+            private readonly TrackDB _trackDB;
         private string _currentBoard;
         public string Nickname { get; set; }
         public string SelectedButton { get; set; } = "4";
-        public string SelectedBoard { get; set; } = "SC";
         public string CurrentButton
         {
             get => _currentButton;
@@ -92,6 +92,50 @@ namespace DjmaxRandomSelectorV.ViewModels
                             IsMaxCombo = p.MaxCombo is null ? null : p.MaxCombo != 0,
                         };
             PatternItems.AddRange(items);
+                if (string.IsNullOrEmpty(SelectedButton))
+                {
+                    MessageBox.Show("Button is empty.", "Invalid Request", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var client = new HttpClient();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                string url = $"https://v-archive.net/api/v2/archive/{Nickname}/button/{SelectedButton}";
+                HttpResponseMessage response = client.GetAsync(url).Result;
+                ArchiveV2Response root = response.Content.ReadFromJsonAsync<ArchiveV2Response>().Result;
+                if (root.Success != true)
+                {
+                    MessageBox.Show(root.Message ?? "Unknown error", "Request Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                PatternItems.Clear();
+                CurrentButton = root.Button + "B";
+                CurrentBoard = "All Records";
+
+                // TrackDB의 모든 곡 정보와 V2 API 기록 병합
+                var recordDict = root.Records.ToDictionary(r => (r.Title, r.Pattern));
+            
+                int selectedButtonNum = int.Parse(SelectedButton);
+                var selectedButtonTunes = (ButtonTunes)selectedButtonNum;
+            
+                var allPatterns = from track in _trackDB.AllTrack
+                                 from pattern in track.Patterns
+                                 where pattern.Button == selectedButtonTunes
+                                 let patternStr = pattern.Difficulty.AsString()
+                                 let recordKey = (track.Info.Id, patternStr)
+                                 let record = recordDict.ContainsKey(recordKey) ? recordDict[recordKey] : null
+                                 select new VArchivePatternItem()
+                                 {
+                                     Id = track.Info.Id,
+                                     Style = patternStr,
+                                     Title = track.Info.Title,
+                                     Floor = record?.Floor ?? 0,
+                                     Score = record?.Score,
+                                     IsMaxCombo = record?.MaxCombo,
+                                     HasRecord = record != null
+                                 };
+                PatternItems.AddRange(allPatterns);
         }
 
         #region Query
@@ -188,5 +232,33 @@ namespace DjmaxRandomSelectorV.ViewModels
             public string Score { get; init; }
             public int? MaxCombo { get; init; }
         }
+            public record ArchiveV2Response
+            {
+                public bool? Success { get; init; }
+                public string Button { get; init; }
+                public string Nickname { get; init; }
+                public int Count { get; init; }
+                public List<ArchiveV2Record> Records { get; init; }
+                public string Message { get; init; }
+            }
+
+            public record ArchiveV2Record
+            {
+                public int Title { get; init; }
+                public string Name { get; init; }
+                public string DlcCode { get; init; }
+                public string Pattern { get; init; }
+                public int Level { get; init; }
+                public int? Floor { get; init; }
+                public string FloorName { get; init; }
+                public bool NewTab { get; init; }
+                public double MaxRating { get; init; }
+                public double Score { get; init; }
+                public bool MaxCombo { get; init; }
+                public double? Rating { get; init; }
+                public double Djpower { get; init; }
+                public double? MaxDjpower { get; init; }
+                public string UpdatedAt { get; init; }
+            }
     }
 }
