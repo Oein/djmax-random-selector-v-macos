@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="DjmaxRandomSelectorV.Desktop.MainWindow"
+        Title="DJMAX Random Selector V"
+        Width="460" Height="300"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+    <Border Padding="28">
+        <StackPanel Spacing="14" VerticalAlignment="Center">
+            <TextBlock Text="DJMAX Random Selector V"
+                       FontSize="24" FontWeight="Bold"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="macOS port — preview build"
+                       Opacity="0.7"
+                       HorizontalAlignment="Center" />
+            <Border Background="#22FFFFFF" CornerRadius="6" Padding="14">
+                <StackPanel Spacing="6">
+                    <TextBlock x:Name="PlatformText" HorizontalAlignment="Center" />
+                    <TextBlock x:Name="BackendText" HorizontalAlignment="Center" Opacity="0.8" />
+                </StackPanel>
+            </Border>
+            <TextBlock Text="UI port (stage 2) is in progress."
+                       FontSize="12" Opacity="0.6"
+                       TextWrapping="Wrap"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center" />
+        </StackPanel>
+    </Border>
+</Window>
