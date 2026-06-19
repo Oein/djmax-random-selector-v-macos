@@ -1,0 +1,57 @@
+name: macOS DMG
+
+on:
+  push:
+    branches: [ main, "claude/**" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build .dmg (${{ matrix.rid }})
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [ osx-arm64, osx-x64 ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore DjmaxRandomSelectorV.Desktop/DjmaxRandomSelectorV.Desktop.csproj
+
+      - name: Publish (${{ matrix.rid }})
+        run: |
+          dotnet publish DjmaxRandomSelectorV.Desktop/DjmaxRandomSelectorV.Desktop.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=false \
+            --output "publish/${{ matrix.rid }}"
+
+      - name: Build .app + .dmg
+        env:
+          APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '1.0.0' }}
+        run: ./build/macos/make-dmg.sh "${{ matrix.rid }}" "publish/${{ matrix.rid }}" "dist"
+
+      - name: Upload .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DJMAX-Random-Selector-V-${{ matrix.rid }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
+      - name: Attach .dmg to release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.dmg

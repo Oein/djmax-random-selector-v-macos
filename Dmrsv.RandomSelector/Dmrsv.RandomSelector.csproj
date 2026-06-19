@@ -1,7 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <!--
+      Cross-platform: the shared selection logic targets plain net6.0 so it runs on
+      Windows, macOS and Linux. OS-specific keyboard input lives behind IInputSender
+      (see Input/). The net6.0-windows WPF app still references this project happily.
+    -->
+    <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
