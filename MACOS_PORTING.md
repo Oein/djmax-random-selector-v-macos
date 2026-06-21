@@ -57,10 +57,27 @@ These still live in the WPF project and need macOS equivalents when the UI is po
 
 ## Stage 2 — Avalonia desktop app (`DjmaxRandomSelectorV.Desktop`)
 
-A minimal Avalonia 11 app shell that references the cross-platform core. It is the
-starting point for the full UI port and the thing the macOS installer ships. Right
-now it just shows the detected platform and the active input backend; the WPF views
-(`MainView`, `BasicFilterView`, …) are ported into it incrementally.
+An Avalonia 11 app that references the cross-platform core. It is the starting
+point for the full UI port and the thing the macOS installer ships. The WPF views
+(`BasicFilterView`, `SettingView`, …) are ported into it incrementally.
+
+Working today:
+
+* **Track loading** — `Services/TrackLoader.cs` reads `AllTrackList.json` into the
+  cross-platform `Track` model (no Caliburn/WPF).
+* **Random selection** — `Services/SelectorService.cs` runs the real pipeline
+  (`BasicFilter` → `PatternPicker` → `SelectorWithHistory` → `Locator`).
+* **Global F7 hotkey** — `Platform/MacGlobalHotkey.cs` uses Carbon
+  `RegisterEventHotKey` (the macOS counterpart to the Windows `RegisterHotKey` +
+  HWND hook). Pressing **F7** (or the in-app button) picks a random song, shows
+  it, and drives the focused game window via `MacInputSender`.
+
+> Sending keystrokes to the game still needs **Accessibility permission**
+> (System Settings → Privacy & Security → Accessibility). Without it, selection
+> still works and the picked song is shown, but no keys reach the game.
+
+Still to port: the filter/settings/favorite/history/VArchive views and DLC
+ownership filtering (preview currently treats all tracks as playable).
 
 ```bash
 # Run the Avalonia app locally (any OS with the .NET 8 SDK)
