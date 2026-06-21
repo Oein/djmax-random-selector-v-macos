@@ -72,9 +72,15 @@ Working today:
   HWND hook). Pressing **F7** (or the in-app button) picks a random song, shows
   it, and drives the focused game window via `MacInputSender`.
 
-> Sending keystrokes to the game still needs **Accessibility permission**
-> (System Settings → Privacy & Security → Accessibility). Without it, selection
-> still works and the picked song is shown, but no keys reach the game.
+> Sending keystrokes to the game needs **Accessibility permission** (System
+> Settings → Privacy & Security → Accessibility). The app detects this on launch
+> (`AXIsProcessTrusted`), prompts for it, and shows a "Grant Accessibility
+> permission" button; without it, selection still works and the picked song is
+> shown, but no keys reach the game.
+>
+> **F7 vs. the button:** keys go to whatever window is focused. Press **F7 while
+> the game is focused** to drive it. The in-app button only *previews* a pick —
+> when you click it, this app is focused, so the keys would go here, not the game.
 
 Still to port: the filter/settings/favorite/history/VArchive views and DLC
 ownership filtering (preview currently treats all tracks as playable).

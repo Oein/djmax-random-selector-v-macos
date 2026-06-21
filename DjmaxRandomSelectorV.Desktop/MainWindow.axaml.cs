@@ -18,13 +18,16 @@ namespace DjmaxRandomSelectorV.Desktop
         private SelectorService? _selector;
         private IGlobalHotkey? _hotkey;
         private int _busy;
+        private string _baseStatus = string.Empty;
 
         public MainWindow()
         {
             InitializeComponent();
 
             SelectButton.Click += (_, _) => TriggerSelect();
+            AccessibilityButton.Click += (_, _) => OnGrantAccessibility();
             Opened += OnOpened;
+            Activated += (_, _) => RefreshAccessibility(prompt: false);
             Closed += OnClosed;
         }
 
@@ -39,21 +42,57 @@ namespace DjmaxRandomSelectorV.Desktop
                 _hotkey = GlobalHotkey.Create();
                 bool registered = _hotkey.Register(F7KeyCode, () => Dispatcher.UIThread.Post(TriggerSelect));
 
-                StatusText.Text = registered
-                    ? $"{_selector.CandidateCount} tracks loaded · press F7 in-game, or click the button."
-                    : $"{_selector.CandidateCount} tracks loaded · global F7 unavailable on this platform — use the button.";
+                _baseStatus = registered
+                    ? $"{_selector.CandidateCount} tracks loaded · focus the game and press F7. The button only previews (keys go to the focused window)."
+                    : $"{_selector.CandidateCount} tracks loaded · global F7 unavailable — use the button.";
+                StatusText.Text = _baseStatus;
             }
             catch (Exception ex)
             {
                 StatusText.Text = $"Failed to load track list: {ex.Message}";
                 SelectButton.IsEnabled = false;
             }
+
+            // Keystrokes only reach the game if the app is trusted for Accessibility.
+            RefreshAccessibility(prompt: true);
         }
 
         private void OnClosed(object? sender, EventArgs e)
         {
             _hotkey?.Dispose();
             _hotkey = null;
+        }
+
+        private void OnGrantAccessibility()
+        {
+            if (!OperatingSystem.IsMacOS())
+            {
+                return;
+            }
+            MacAccessibility.PromptIfNeeded();
+            MacAccessibility.OpenSettings();
+        }
+
+        private void RefreshAccessibility(bool prompt)
+        {
+            if (!OperatingSystem.IsMacOS())
+            {
+                return;
+            }
+
+            bool trusted = prompt ? MacAccessibility.PromptIfNeeded() : MacAccessibility.IsTrusted();
+            AccessibilityButton.IsVisible = !trusted;
+
+            if (!trusted)
+            {
+                StatusText.Text = "Accessibility permission required to send keys to the game. " +
+                                  "Grant it below, then restart the app.";
+            }
+            else if (StatusText.Text?.StartsWith("Accessibility permission") == true
+                     && _baseStatus.Length > 0)
+            {
+                StatusText.Text = _baseStatus;
+            }
         }
 
         private void TriggerSelect()
