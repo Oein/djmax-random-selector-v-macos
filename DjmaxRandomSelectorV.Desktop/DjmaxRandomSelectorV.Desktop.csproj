@@ -24,4 +24,11 @@
     <ProjectReference Include="..\Dmrsv.RandomSelector\Dmrsv.RandomSelector.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Track database (shared with the Windows app); copied next to the app. -->
+    <Content Include="..\DjmaxRandomSelectorV\DMRSV3_Data\AllTrackList.json" Link="Data\AllTrackList.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
